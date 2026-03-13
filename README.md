@@ -56,6 +56,7 @@ Scripts\deploy-plugin.bat
 | 真实传感器 | 基于 LibreHardwareMonitor 读取硬件温度 |
 | 传感器绑定 | 自定义传感器名称，支持模糊/精确匹配 |
 | 多层安全 | 限幅、紧急、高温保底、趋势预判、步进限制 |
+| AI 调用优化 | 变化阈值（changeThreshold）、迟滞死区（hysteresisPercent）、快照历史（snapshotHistorySize） |
 | 诊断日志 | 4 级日志，支持控制台与文件输出 |
 
 ## 支持的 AI 服务

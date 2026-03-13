@@ -16,6 +16,11 @@ public sealed class ConfigForm : Form
     private readonly NumericUpDown _nudPollingInterval = new() { Minimum = 1, Maximum = 300, Width = 80 };
     private readonly NumericUpDown _nudMaxStep = new() { Minimum = 1, Maximum = 50, DecimalPlaces = 1, Increment = 1m, Width = 80 };
 
+    // --- AI 调用优化字段 ---
+    private readonly NumericUpDown _nudChangeThreshold = new() { Minimum = 0, Maximum = 20, DecimalPlaces = 1, Increment = 0.5m, Width = 80 };
+    private readonly NumericUpDown _nudHysteresisPercent = new() { Minimum = 0, Maximum = 20, DecimalPlaces = 1, Increment = 0.5m, Width = 80 };
+    private readonly NumericUpDown _nudSnapshotHistory = new() { Minimum = 0, Maximum = 20, DecimalPlaces = 0, Increment = 1m, Width = 80 };
+
     // --- 传感器字段 ---
     private readonly ComboBox _cboSensorProvider = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
     private readonly TextBox _txtCpuSensor = new() { Width = 300 };
@@ -41,7 +46,7 @@ public sealed class ConfigForm : Form
     public ConfigForm()
     {
         Text = "FanControl AI \u63d2\u4ef6 \u2014 \u914d\u7f6e\u5de5\u5177";
-        Size = new Size(560, 680);
+        Size = new Size(560, 760);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         StartPosition = FormStartPosition.CenterScreen;
@@ -79,6 +84,9 @@ public sealed class ConfigForm : Form
         AddRow(panelAi, "\u8d85\u65f6(\u79d2):", _nudTimeout);
         AddRow(panelAi, "\u8f6e\u8be2\u95f4\u9694(\u79d2):", _nudPollingInterval);
         AddRow(panelAi, "\u6700\u5927\u6b65\u8fdb(%):", _nudMaxStep);
+        AddRow(panelAi, "\u53d8\u5316\u9608\u503c(\u00b0C):", _nudChangeThreshold);
+        AddRow(panelAi, "\u8fdf\u6ede\u6b7b\u533a(%):", _nudHysteresisPercent);
+        AddRow(panelAi, "\u5feb\u7167\u5386\u53f2\u6570:", _nudSnapshotHistory);
 
         // 测试连接按钮
         var testPanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
@@ -208,6 +216,9 @@ public sealed class ConfigForm : Form
             _nudTimeout.Value = Math.Clamp(settings.TimeoutSeconds, 5, 120);
             _nudPollingInterval.Value = Math.Clamp(settings.PollingIntervalSeconds, 1, 300);
             _nudMaxStep.Value = (decimal)Math.Clamp(settings.MaxStepPercent, 1, 50);
+            _nudChangeThreshold.Value = (decimal)Math.Clamp(settings.ChangeThreshold, 0, 20);
+            _nudHysteresisPercent.Value = (decimal)Math.Clamp(settings.HysteresisPercent, 0, 20);
+            _nudSnapshotHistory.Value = Math.Clamp(settings.SnapshotHistorySize, 0, 20);
 
             _cboSensorProvider.SelectedItem = settings.SensorProvider;
             _txtCpuSensor.Text = settings.CpuSensorName;
@@ -240,6 +251,9 @@ public sealed class ConfigForm : Form
                 TimeoutSeconds = (int)_nudTimeout.Value,
                 PollingIntervalSeconds = (int)_nudPollingInterval.Value,
                 MaxStepPercent = (double)_nudMaxStep.Value,
+                ChangeThreshold = (double)_nudChangeThreshold.Value,
+                HysteresisPercent = (double)_nudHysteresisPercent.Value,
+                SnapshotHistorySize = (int)_nudSnapshotHistory.Value,
                 SensorProvider = _cboSensorProvider.SelectedItem?.ToString() ?? "mock",
                 CpuSensorName = _txtCpuSensor.Text.Trim(),
                 GpuSensorName = _txtGpuSensor.Text.Trim(),

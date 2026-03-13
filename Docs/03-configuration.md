@@ -23,6 +23,9 @@
   "gpuSensorName": "",
   "motherboardSensorName": "",
   "sensorMatchMode": "contains",
+  "changeThreshold": 2.0,
+  "hysteresisPercent": 3.0,
+  "snapshotHistorySize": 5,
   "enableDiagnostics": false,
   "logLevel": "info",
   "logToFile": false
@@ -108,6 +111,26 @@
   - `"contains"` — 模糊匹配，传感器名称包含指定字符串即匹配（不区分大小写）
   - `"exact"` — 精确匹配，传感器名称必须完全一致（不区分大小写）
 - **建议**：优先使用 `contains`，匹配更宽松，适合大多数硬件
+
+### AI 调用优化配置
+
+#### `changeThreshold`（变化阈值）
+- **类型**：double
+- **默认值**：`2.0`
+- **范围**：0.0 ~ 20.0
+- **说明**：温度变化低于此阈值（°C）时跳过 AI 调用，减少不必要的 API 请求。负载变化使用 `阈值 × 5` 作为判定标准。设为 0 表示禁用（每次轮询都调用 AI）
+
+#### `hysteresisPercent`（迟滞死区）
+- **类型**：double
+- **默认值**：`3.0`
+- **范围**：0.0 ~ 20.0
+- **说明**：风扇转速变化低于此百分比时不实际应用，防止风扇频繁微调震荡。设为 0 表示禁用
+
+#### `snapshotHistorySize`（快照历史数量）
+- **类型**：int
+- **默认值**：`5`
+- **范围**：0 ~ 20
+- **说明**：保留最近 N 次运行时快照供 AI 分析温度趋势，使决策更平滑。设为 0 表示不保留历史。历史数据以紧凑格式附加在 AI 提示词中
 
 ### 诊断配置
 

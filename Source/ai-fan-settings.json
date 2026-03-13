@@ -13,6 +13,10 @@
   "motherboardSensorName": "",
   "sensorMatchMode": "contains",
 
+  "changeThreshold": 2.0,
+  "hysteresisPercent": 3.0,
+  "snapshotHistorySize": 5,
+
   "enableDiagnostics": false,
   "logLevel": "info",
   "logToFile": false

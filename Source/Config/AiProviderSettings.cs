@@ -66,6 +66,26 @@ public sealed class AiProviderSettings
     /// <summary>是否使用精确匹配模式</summary>
     public bool UseExactMatch => string.Equals(SensorMatchMode, "exact", StringComparison.OrdinalIgnoreCase);
 
+    // ── AI 调用优化配置 ──
+
+    /// <summary>
+    /// 变化阈值（度C）：温度/负载变化低于此值时跳过 AI 调用，减少不必要的请求。
+    /// 设为 0 表示禁用（每次轮询都调用 AI）。默认 2.0 度C。
+    /// </summary>
+    public double ChangeThreshold { get; set; } = 2.0;
+
+    /// <summary>
+    /// 迟滞死区百分比：风扇转速变化低于此值时不实际应用，防止风扇频繁微调震荡。
+    /// 设为 0 表示禁用。默认 3.0%。
+    /// </summary>
+    public double HysteresisPercent { get; set; } = 3.0;
+
+    /// <summary>
+    /// 快照历史保留数量：保留最近 N 次快照供 AI 分析趋势和本地回退参考。
+    /// 范围 0~20，0 表示不保留历史。默认 5。
+    /// </summary>
+    public int SnapshotHistorySize { get; set; } = 5;
+
     // ── 诊断与日志配置 ──
 
     /// <summary>是否启用诊断日志（默认关闭）</summary>
@@ -106,6 +126,7 @@ public sealed class AiProviderSettings
         return $"模型:{Model} 端点:{EndpointUrl} Key:{masked} 超时:{TimeoutSeconds}s "
              + $"步进:+/-{MaxStepPercent}% 轮询:{PollingIntervalSeconds}s 传感器:{SensorProvider} "
              + $"绑定:{bindingStr} "
+             + $"变化阈值:{ChangeThreshold}°C 迟滞:{HysteresisPercent}% 历史:{SnapshotHistorySize} "
              + $"诊断:{(EnableDiagnostics ? "开" : "关")} 日志级别:{LogLevel} 写文件:{(LogToFile ? "是" : "否")}";
     }
 }

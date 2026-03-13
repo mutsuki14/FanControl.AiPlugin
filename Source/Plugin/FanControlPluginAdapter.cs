@@ -27,6 +27,10 @@ public sealed class FanControlPluginAdapter : IDisposable
     private DateTime _lastAiCallUtc = DateTime.MinValue;
     private readonly object _lock = new();
 
+    // ── AI 调用优化状态 ──
+    private FanRuntimeSnapshot? _lastAiCallSnapshot;  // 上次实际调用 AI 时的快照
+    private readonly Queue<FanRuntimeSnapshot> _snapshotHistory = new();
+
     /// <summary>最新的安全校验后决策（线程安全读取）</summary>
     public AiFanDecision? LastDecision
     {
@@ -76,8 +80,7 @@ public sealed class FanControlPluginAdapter : IDisposable
     /// <summary>
     /// 同步单次驱动——由 IPlugin2.Update() 调用。
     /// 每次调用采集传感器数据；按 pollingIntervalSeconds 节流 AI 请求。
-    /// FanControl 的 Update 频率通常为 1 秒，而 AI 请求频率可能为 5 秒，
-    /// 中间的周期只刷新传感器数据，不发起 AI 调用。
+    /// 支持 changeThreshold（变化阈值跳过）和 hysteresisPercent（迟滞死区）优化。
     /// </summary>
     public void TickOnce()
     {
@@ -85,6 +88,7 @@ public sealed class FanControlPluginAdapter : IDisposable
         var snapshot = _sensor.Collect(_lastSnapshot);
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
+        PushSnapshotHistory(snapshot);
 
         // 检查是否该发起 AI 请求
         var now = DateTime.UtcNow;
@@ -95,12 +99,25 @@ public sealed class FanControlPluginAdapter : IDisposable
             return; // 本周期只刷新传感器，不调 AI
         }
 
+        // changeThreshold: 如果温度/负载变化不显著，跳过本次 AI 调用
+        if (_settings.ChangeThreshold > 0 && _lastAiCallSnapshot is not null && !IsSignificantChange(snapshot, _lastAiCallSnapshot))
+        {
+            _logger.Debug("Adapter", $"TickOnce: 变化未超过阈值 {_settings.ChangeThreshold}°C，跳过 AI 调用");
+            return;
+        }
+
         _lastAiCallUtc = now;
+        _lastAiCallSnapshot = snapshot;
         _logger.Info("Adapter", $"TickOnce: 节流到期，发起 AI 调用（间隔 {elapsed:F1}s）");
 
         try
         {
-            var (raw, safe) = _aiService.GetDecisionSync(snapshot);
+            var historyList = GetSnapshotHistoryList();
+            var (raw, safe) = _aiService.GetDecisionSync(snapshot, historyList);
+
+            // hysteresisPercent: 如果风扇变化在死区内，沿用上次决策
+            safe = ApplyHysteresis(safe);
+
             lock (_lock) _lastDecision = safe;
             _diagnostics.LastDecision = safe;
             _diagnostics.LastAiCallUtc = now;
@@ -132,6 +149,7 @@ public sealed class FanControlPluginAdapter : IDisposable
         var snapshot = _sensor.Collect(_lastSnapshot);
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
+        PushSnapshotHistory(snapshot);
 
         var now = DateTime.UtcNow;
         var elapsed = (now - _lastAiCallUtc).TotalSeconds;
@@ -141,12 +159,24 @@ public sealed class FanControlPluginAdapter : IDisposable
             return;
         }
 
+        // changeThreshold: 如果变化不显著，跳过 AI 调用
+        if (_settings.ChangeThreshold > 0 && _lastAiCallSnapshot is not null && !IsSignificantChange(snapshot, _lastAiCallSnapshot))
+        {
+            _logger.Debug("Adapter", $"TickOnceAsync: 变化未超过阈值 {_settings.ChangeThreshold}°C，跳过 AI 调用");
+            return;
+        }
+
         _lastAiCallUtc = now;
+        _lastAiCallSnapshot = snapshot;
         _logger.Info("Adapter", "TickOnceAsync: 发起 AI 调用");
 
         try
         {
-            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot);
+            var historyList = GetSnapshotHistoryList();
+            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList);
+
+            safe = ApplyHysteresis(safe);
+
             lock (_lock) _lastDecision = safe;
             _diagnostics.LastDecision = safe;
             _diagnostics.LastAiCallUtc = now;
@@ -169,7 +199,7 @@ public sealed class FanControlPluginAdapter : IDisposable
     }
 
     /// <summary>
-    /// 强制立即执行一次 AI 决策（忽略节流），用于初始化或测试。
+    /// 强制立即执行一次 AI 决策（忽略节流和 changeThreshold），用于初始化或测试。
     /// </summary>
     public async Task ForceTickAsync()
     {
@@ -178,12 +208,15 @@ public sealed class FanControlPluginAdapter : IDisposable
         var snapshot = _sensor.Collect(_lastSnapshot);
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
+        PushSnapshotHistory(snapshot);
 
         _lastAiCallUtc = DateTime.UtcNow;
+        _lastAiCallSnapshot = snapshot;
 
         try
         {
-            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot);
+            var historyList = GetSnapshotHistoryList();
+            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList);
             lock (_lock) _lastDecision = safe;
             _diagnostics.LastDecision = safe;
             _diagnostics.LastAiCallUtc = _lastAiCallUtc;
@@ -214,6 +247,67 @@ public sealed class FanControlPluginAdapter : IDisposable
             || Math.Abs(before.GpuFanPercent - after.GpuFanPercent) > eps
             || Math.Abs(before.CaseFanPercent - after.CaseFanPercent) > eps
             || before.Mode != after.Mode;
+    }
+
+    // ── changeThreshold: 判断温度/负载变化是否显著 ──
+
+    /// <summary>
+    /// 检查当前快照与上次 AI 调用时的快照之间是否存在显著变化。
+    /// 任一温度或负载变化超过 changeThreshold 即视为显著。
+    /// </summary>
+    private bool IsSignificantChange(FanRuntimeSnapshot current, FanRuntimeSnapshot baseline)
+    {
+        var threshold = _settings.ChangeThreshold;
+        return Math.Abs(current.CpuTemperature - baseline.CpuTemperature) >= threshold
+            || Math.Abs(current.GpuTemperature - baseline.GpuTemperature) >= threshold
+            || Math.Abs(current.MotherboardTemperature - baseline.MotherboardTemperature) >= threshold
+            || Math.Abs(current.CpuUsagePercent - baseline.CpuUsagePercent) >= threshold * 5
+            || Math.Abs(current.GpuUsagePercent - baseline.GpuUsagePercent) >= threshold * 5;
+    }
+
+    // ── hysteresisPercent: 迟滞死区，防止风扇频繁微调 ──
+
+    /// <summary>
+    /// 如果新决策与上次决策的风扇转速差异在迟滞死区内，沿用上次决策值。
+    /// </summary>
+    private AiFanDecision ApplyHysteresis(AiFanDecision newDecision)
+    {
+        var hyst = _settings.HysteresisPercent;
+        if (hyst <= 0) return newDecision;
+
+        AiFanDecision? prev;
+        lock (_lock) prev = _lastDecision;
+        if (prev is null) return newDecision;
+
+        var cpuDelta = Math.Abs(newDecision.CpuFanPercent - prev.CpuFanPercent);
+        var gpuDelta = Math.Abs(newDecision.GpuFanPercent - prev.GpuFanPercent);
+        var caseDelta = Math.Abs(newDecision.CaseFanPercent - prev.CaseFanPercent);
+
+        if (cpuDelta < hyst) newDecision.CpuFanPercent = prev.CpuFanPercent;
+        if (gpuDelta < hyst) newDecision.GpuFanPercent = prev.GpuFanPercent;
+        if (caseDelta < hyst) newDecision.CaseFanPercent = prev.CaseFanPercent;
+
+        if (cpuDelta < hyst || gpuDelta < hyst || caseDelta < hyst)
+            _logger.Debug("Adapter", $"迟滞死区(+/-{hyst}%): 部分风扇沿用上次值");
+
+        return newDecision;
+    }
+
+    // ── 快照历史管理 ──
+
+    /// <summary>将快照加入历史队列，保持队列长度不超过 SnapshotHistorySize</summary>
+    private void PushSnapshotHistory(FanRuntimeSnapshot snapshot)
+    {
+        if (_settings.SnapshotHistorySize <= 0) return;
+        _snapshotHistory.Enqueue(snapshot);
+        while (_snapshotHistory.Count > _settings.SnapshotHistorySize)
+            _snapshotHistory.Dequeue();
+    }
+
+    /// <summary>获取快照历史的只读列表副本</summary>
+    private List<FanRuntimeSnapshot> GetSnapshotHistoryList()
+    {
+        return _snapshotHistory.ToList();
     }
 
     /// <summary>测试 AI 连接</summary>
