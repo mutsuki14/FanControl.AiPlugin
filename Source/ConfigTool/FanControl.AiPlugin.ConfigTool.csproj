@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>FanControl.AiPlugin.ConfigTool</RootNamespace>
+    <AssemblyName>FanControl.AiPlugin.ConfigTool</AssemblyName>
+  </PropertyGroup>
+
+  <!-- 引用主类库项目（使用其配置类和 HTTP 客户端） -->
+  <ItemGroup>
+    <ProjectReference Include="..\FanControl.AiPlugin.csproj" />
+  </ItemGroup>
+
+  <!-- 配置文件 -->
+  <ItemGroup>
+    <None Update="..\ai-fan-settings.json" Link="ai-fan-settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>FanControl.AiPlugin.Demo</RootNamespace>
+  </PropertyGroup>
+
+  <!-- 引用主类库项目 -->
+  <ItemGroup>
+    <ProjectReference Include="..\FanControl.AiPlugin.csproj" />
+  </ItemGroup>
+
+  <!-- Demo 也需要配置文件 -->
+  <ItemGroup>
+    <None Update="..\ai-fan-settings.json" Link="ai-fan-settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

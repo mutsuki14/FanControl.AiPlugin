@@ -1,0 +1,58 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>FanControl.AiPlugin</AssemblyName>
+    <RootNamespace>FanControl.AiPlugin</RootNamespace>
+    <!-- 输出为类库 DLL，放入 FanControl 的 Plugins 目录即可被加载 -->
+    <OutputType>Library</OutputType>
+  </PropertyGroup>
+
+  <!--
+    条件编译说明：
+    默认不启用 LibreHardwareMonitor，使用 MockSensorProvider。
+    启用方式：在命令行或 csproj 中设置 USE_LHM 属性为 true。
+      dotnet build -p:USE_LHM=true
+    或在此处取消注释以下行：
+  -->
+  <!-- <PropertyGroup><USE_LHM>true</USE_LHM></PropertyGroup> -->
+
+  <!-- 根据 USE_LHM 属性定义编译符号 -->
+  <PropertyGroup Condition="'$(USE_LHM)' == 'true'">
+    <DefineConstants>$(DefineConstants);USE_LIBRE_HARDWARE_MONITOR</DefineConstants>
+  </PropertyGroup>
+
+  <!-- 引用真实 FanControl.Plugins.dll（编译时引用，运行时由 FanControl 宿主提供） -->
+  <ItemGroup>
+    <Reference Include="FanControl.Plugins">
+      <HintPath>..\FanControl.Plugins.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- 仅在启用 USE_LHM 时引入 LibreHardwareMonitorLib NuGet 包 -->
+  <ItemGroup Condition="'$(USE_LHM)' == 'true'">
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.4" />
+  </ItemGroup>
+
+  <!-- 未启用 LHM 时排除 LHM 传感器实现文件（避免编译错误） -->
+  <ItemGroup Condition="'$(USE_LHM)' != 'true'">
+    <Compile Remove="Sensors\LibreHardwareMonitorSensorProvider.cs" />
+  </ItemGroup>
+
+  <!-- 配置文件随编译输出 -->
+  <ItemGroup>
+    <None Update="ai-fan-settings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <!-- 排除 Demo 目录，Demo 是独立项目 -->
+  <ItemGroup>
+    <Compile Remove="Demo\**" />
+    <None Remove="Demo\**" />
+  </ItemGroup>
+
+</Project>

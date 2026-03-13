@@ -1,0 +1,19 @@
+{
+  "model": "gpt-4o",
+  "apiKey": "YOUR_API_KEY_HERE",
+  "endpointUrl": "https://api.openai.com/v1/chat/completions",
+  "timeoutSeconds": 30,
+  "temperature": 0.3,
+  "maxStepPercent": 15.0,
+  "pollingIntervalSeconds": 5,
+  "sensorProvider": "lhm",
+
+  "cpuSensorName": "",
+  "gpuSensorName": "",
+  "motherboardSensorName": "",
+  "sensorMatchMode": "contains",
+
+  "enableDiagnostics": false,
+  "logLevel": "info",
+  "logToFile": false
+}
