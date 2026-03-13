@@ -1,8 +1,17 @@
 # FanControl AI Plugin
 
-> 一个面向 FanControl 的 AI 风扇控制插件发布仓库，支持用户自定义模型、API Key、端点地址、传感器绑定与诊断日志。
+> 一个面向 FanControl 的 AI 风扇控制插件项目，支持 OpenAI 兼容模型接入、传感器绑定、可视化配置与诊断日志。
+>
+> An AI-powered FanControl plugin project with OpenAI-compatible model support, sensor binding, a desktop config tool, and diagnostics.
 
 这个仓库包含完整源码、独立配置工具、部署脚本和中文文档，适合继续开发、在 Windows 上编译部署，也已经具备继续整理为公开项目的基础。
+
+## 快速入口
+
+- 想快速上手：看 [Docs/01-quick-start.md](Docs/01-quick-start.md)
+- 想直接部署：看 [Docs/02-deployment.md](Docs/02-deployment.md)
+- 想修改配置：看 [Docs/03-configuration.md](Docs/03-configuration.md)
+- 想参与维护：看 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 安全提示
 
@@ -12,7 +21,7 @@
 
 ## 当前状态
 
-- 当前是“可交付的发布整理版”，目录结构和文档已经适合落地使用
+- 当前是首个公开版本后的持续整理阶段
 - 已包含插件源码、配置工具源码、默认配置、部署脚本和故障排查文档
 - 仍需要在 Windows + .NET 8.0 SDK 环境中编译生成真实 DLL 和 EXE 后再部署
 
