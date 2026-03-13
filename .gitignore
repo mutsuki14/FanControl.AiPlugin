@@ -29,6 +29,9 @@ desktop.ini
 *.dll
 *.exe
 
+# Local private config copies
+*.local.json
+
 # Keep source tree tracked even if names overlap
 !Source/**/*.dll
 !Source/**/*.exe

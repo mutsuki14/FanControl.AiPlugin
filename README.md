@@ -2,7 +2,13 @@
 
 > 一个面向 FanControl 的 AI 风扇控制插件发布仓库，支持用户自定义模型、API Key、端点地址、传感器绑定与诊断日志。
 
-这个仓库包含完整源码、独立配置工具、部署脚本和中文文档，适合继续开发、在 Windows 上编译部署，或后续整理成公开项目。
+这个仓库包含完整源码、独立配置工具、部署脚本和中文文档，适合继续开发、在 Windows 上编译部署，也已经具备继续整理为公开项目的基础。
+
+## 安全提示
+
+- 请不要把真实 API Key 写入准备提交到仓库的配置文件中
+- 建议仅在本地环境填写真实密钥，并在提交前再次检查 `ai-fan-settings.json`
+- 默认示例配置只应保留占位符，不应保留个人密钥或私有端点
 
 ## 当前状态
 
@@ -59,6 +65,8 @@ Scripts\deploy-plugin.bat
 | 文档 | 说明 |
 |------|------|
 | [CHECKLIST.md](CHECKLIST.md) | 首次使用检查清单 |
+| [CHANGELOG.md](CHANGELOG.md) | 根目录更新日志 |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | 贡献指南 |
 | [Docs/01-quick-start.md](Docs/01-quick-start.md) | 快速开始 |
 | [Docs/02-deployment.md](Docs/02-deployment.md) | 详细部署步骤 |
 | [Docs/03-configuration.md](Docs/03-configuration.md) | 全部配置字段详解 |
@@ -83,6 +91,7 @@ Scripts\deploy-plugin.bat
 3. 传感器绑定仅在 `lhm` 模式下生效
 4. 三路传感器共用同一匹配模式
 5. 需要在 Windows + .NET 8.0 SDK 环境中编译后再实际部署
+6. 当前还没有完整自动化测试或 CI 流程，主要依赖人工验证
 
 ## 许可证
 
