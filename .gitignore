@@ -1,7 +1,34 @@
+# Build outputs
 **/bin/
 **/obj/
-.vs/
-*.user
-*.suo
 *.log
 *.tmp
+*.pdb
+*.cache
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+**/packages/
+*.nupkg
+project.lock.json
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Local generated binaries at repo root
+*.dll
+*.exe
+
+# Keep source tree tracked even if names overlap
+!Source/**/*.dll
+!Source/**/*.exe
