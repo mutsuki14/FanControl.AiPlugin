@@ -31,6 +31,9 @@ public sealed class FanControlPluginAdapter : IDisposable
     private FanRuntimeSnapshot? _lastAiCallSnapshot;  // 上次实际调用 AI 时的快照
     private readonly Queue<FanRuntimeSnapshot> _snapshotHistory = new();
 
+    // ── 传感器清洗状态 ──
+    private FanRuntimeSnapshot? _lastGoodSnapshot;  // 上次清洗后的正常快照
+
     /// <summary>最新的安全校验后决策（线程安全读取）</summary>
     public AiFanDecision? LastDecision
     {
@@ -74,7 +77,7 @@ public sealed class FanControlPluginAdapter : IDisposable
         }
 #endif
 
-        _logger.Info("Adapter", $"\u9002\u914d\u5668\u5df2\u521b\u5efa\uff0c\u4f20\u611f\u5668: {sensor.GetType().Name}");
+        _logger.Info("Adapter", $"适配器已创建，传感器: {sensor.GetType().Name}");
     }
 
     /// <summary>
@@ -86,6 +89,14 @@ public sealed class FanControlPluginAdapter : IDisposable
     {
         // 采集传感器
         var snapshot = _sensor.Collect(_lastSnapshot);
+
+        // 传感器数据清洗
+        if (_settings.EnableSensorSanitize)
+        {
+            snapshot = SensorSanitizer.Sanitize(snapshot, _lastGoodSnapshot, _logger);
+            _lastGoodSnapshot = snapshot;
+        }
+
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
         PushSnapshotHistory(snapshot);
@@ -113,7 +124,9 @@ public sealed class FanControlPluginAdapter : IDisposable
         try
         {
             var historyList = GetSnapshotHistoryList();
-            var (raw, safe) = _aiService.GetDecisionSync(snapshot, historyList);
+            AiFanDecision? prevDecision;
+            lock (_lock) prevDecision = _lastDecision;
+            var (raw, safe) = _aiService.GetDecisionSync(snapshot, historyList, prevDecision);
 
             // hysteresisPercent: 如果风扇变化在死区内，沿用上次决策
             safe = ApplyHysteresis(safe);
@@ -147,6 +160,13 @@ public sealed class FanControlPluginAdapter : IDisposable
     public async Task TickOnceAsync()
     {
         var snapshot = _sensor.Collect(_lastSnapshot);
+
+        if (_settings.EnableSensorSanitize)
+        {
+            snapshot = SensorSanitizer.Sanitize(snapshot, _lastGoodSnapshot, _logger);
+            _lastGoodSnapshot = snapshot;
+        }
+
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
         PushSnapshotHistory(snapshot);
@@ -173,7 +193,9 @@ public sealed class FanControlPluginAdapter : IDisposable
         try
         {
             var historyList = GetSnapshotHistoryList();
-            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList);
+            AiFanDecision? prevDecision;
+            lock (_lock) prevDecision = _lastDecision;
+            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList, prevDecision);
 
             safe = ApplyHysteresis(safe);
 
@@ -206,6 +228,13 @@ public sealed class FanControlPluginAdapter : IDisposable
         _logger.Info("Adapter", "ForceTickAsync: 强制执行 AI 决策（跳过节流）");
 
         var snapshot = _sensor.Collect(_lastSnapshot);
+
+        if (_settings.EnableSensorSanitize)
+        {
+            snapshot = SensorSanitizer.Sanitize(snapshot, _lastGoodSnapshot, _logger);
+            _lastGoodSnapshot = snapshot;
+        }
+
         lock (_lock) _lastSnapshot = snapshot;
         _diagnostics.LastSnapshot = snapshot;
         PushSnapshotHistory(snapshot);
@@ -216,7 +245,9 @@ public sealed class FanControlPluginAdapter : IDisposable
         try
         {
             var historyList = GetSnapshotHistoryList();
-            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList);
+            AiFanDecision? prevDecision;
+            lock (_lock) prevDecision = _lastDecision;
+            var (raw, safe) = await _aiService.GetDecisionAsync(snapshot, historyList, prevDecision);
             lock (_lock) _lastDecision = safe;
             _diagnostics.LastDecision = safe;
             _diagnostics.LastAiCallUtc = _lastAiCallUtc;

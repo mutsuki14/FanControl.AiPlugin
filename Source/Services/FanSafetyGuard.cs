@@ -135,14 +135,52 @@ public static class FanSafetyGuard
         return result;
     }
 
-    /// <summary>本地回退策略：根据温度分段线性映射到转速</summary>
-    public static AiFanDecision LocalFallback(FanRuntimeSnapshot snap, PluginLogger? logger = null)
+    /// <summary>
+    /// 智能本地回退策略：结合温度曲线、快照历史趋势和上次决策进行平滑回退。
+    /// 避免回退时风扇突然大幅变化。
+    /// </summary>
+    public static AiFanDecision LocalFallback(
+        FanRuntimeSnapshot snap,
+        PluginLogger? logger = null,
+        List<FanRuntimeSnapshot>? history = null,
+        AiFanDecision? lastDecision = null)
     {
-        logger?.Info("Safety", "触发本地回退策略（温度分段映射）");
+        logger?.Info("Safety", "触发智能本地回退策略");
 
+        // 基础：温度分段映射
         var cpuFan  = Curve(snap.CpuTemperature);
         var gpuFan  = Curve(snap.GpuTemperature);
         var caseFan = Curve(Math.Max(snap.MotherboardTemperature, Math.Max(snap.CpuTemperature, snap.GpuTemperature) - 10));
+
+        // 趋势修正：如果有历史快照，计算近期变化率并微调
+        if (history is { Count: >= 2 })
+        {
+            var oldest = history[0];
+            var spanSec = (snap.TimestampUtc - oldest.TimestampUtc).TotalSeconds;
+            if (spanSec > 0)
+            {
+                var cpuRate = (snap.CpuTemperature - oldest.CpuTemperature) / spanSec * 60; // °C/min
+                var gpuRate = (snap.GpuTemperature - oldest.GpuTemperature) / spanSec * 60;
+                // 升温 >2°C/min: 每多 1°C/min 追加 3% 风扇
+                if (cpuRate > 2) cpuFan += (cpuRate - 2) * 3;
+                if (gpuRate > 2) gpuFan += (gpuRate - 2) * 3;
+                // 降温 <-2°C/min: 允许额外降低，但限幅最多 -5%
+                if (cpuRate < -2) cpuFan -= Math.Min((-cpuRate - 2) * 2, 5);
+                if (gpuRate < -2) gpuFan -= Math.Min((-gpuRate - 2) * 2, 5);
+                logger?.Debug("Safety", $"回退趋势修正: CPU变化率={cpuRate:+0.0;-0.0}°C/min GPU变化率={gpuRate:+0.0;-0.0}°C/min");
+            }
+        }
+
+        // 平滑混合：如果有上次决策，混合 70% 新值 + 30% 旧值，避免突变
+        if (lastDecision is not null)
+        {
+            const double newWeight = 0.7;
+            const double oldWeight = 0.3;
+            cpuFan  = cpuFan * newWeight + lastDecision.CpuFanPercent * oldWeight;
+            gpuFan  = gpuFan * newWeight + lastDecision.GpuFanPercent * oldWeight;
+            caseFan = caseFan * newWeight + lastDecision.CaseFanPercent * oldWeight;
+            logger?.Debug("Safety", $"回退平滑混合: 新值70%+旧值30%");
+        }
 
         var maxTemp = Math.Max(snap.CpuTemperature, Math.Max(snap.GpuTemperature, snap.MotherboardTemperature));
         var mode = maxTemp switch
@@ -153,7 +191,7 @@ public static class FanSafetyGuard
             _     => "quiet"
         };
 
-        logger?.Debug("Safety", $"本地回退结果: CPU={cpuFan:F1}% GPU={gpuFan:F1}% Case={caseFan:F1}% 模式={mode}");
+        logger?.Debug("Safety", $"智能回退结果: CPU={cpuFan:F1}% GPU={gpuFan:F1}% Case={caseFan:F1}% 模式={mode}");
 
         return new AiFanDecision
         {
@@ -161,7 +199,7 @@ public static class FanSafetyGuard
             GpuFanPercent    = gpuFan,
             CaseFanPercent   = caseFan,
             Mode             = mode,
-            Reason           = "本地回退策略（温度分段映射）",
+            Reason           = "智能本地回退（趋势+平滑）",
             IsOverheatWarning = maxTemp >= 90,
             IsFromAi         = false
         };

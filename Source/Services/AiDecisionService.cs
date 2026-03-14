@@ -66,7 +66,8 @@ public sealed partial class AiDecisionService : IDisposable
     /// 获取三路风扇控制决策（带快照历史）。AI 失败时自动回退到本地策略。
     /// </summary>
     public async Task<(AiFanDecision? Raw, AiFanDecision Safe)> GetDecisionAsync(
-        FanRuntimeSnapshot snapshot, List<FanRuntimeSnapshot>? history = null)
+        FanRuntimeSnapshot snapshot, List<FanRuntimeSnapshot>? history = null,
+        AiFanDecision? lastDecision = null)
     {
         AiFanDecision? raw = null;
 
@@ -84,7 +85,7 @@ public sealed partial class AiDecisionService : IDisposable
             _logger.Error("AI", "AI 调用失败，回退到本地策略", ex);
         }
 
-        var decision = raw ?? FanSafetyGuard.LocalFallback(snapshot, _logger);
+        var decision = raw ?? FanSafetyGuard.LocalFallback(snapshot, _logger, history, lastDecision);
         var safe = FanSafetyGuard.Enforce(decision, snapshot, _maxStep, _logger);
 
         return (raw, safe);
@@ -95,9 +96,10 @@ public sealed partial class AiDecisionService : IDisposable
     /// 内部对异步调用做 GetAwaiter().GetResult() 阻塞（FanControl 的 Update 是同步调用）。
     /// </summary>
     public (AiFanDecision? Raw, AiFanDecision Safe) GetDecisionSync(
-        FanRuntimeSnapshot snapshot, List<FanRuntimeSnapshot>? history = null)
+        FanRuntimeSnapshot snapshot, List<FanRuntimeSnapshot>? history = null,
+        AiFanDecision? lastDecision = null)
     {
-        return GetDecisionAsync(snapshot, history).GetAwaiter().GetResult();
+        return GetDecisionAsync(snapshot, history, lastDecision).GetAwaiter().GetResult();
     }
 
     /// <summary>构建包含完整运行时数据的用户消息，可包含历史快照</summary>

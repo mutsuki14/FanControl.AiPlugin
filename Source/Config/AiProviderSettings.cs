@@ -86,6 +86,14 @@ public sealed class AiProviderSettings
     /// </summary>
     public int SnapshotHistorySize { get; set; } = 5;
 
+    // ── 稳定性增强配置 ──
+
+    /// <summary>
+    /// 是否启用传感器数据清洗（默认开启）。
+    /// 开启后自动过滤异常传感器值（负温度、不可能高温、跳变等），用上次正常值回退。
+    /// </summary>
+    public bool EnableSensorSanitize { get; set; } = true;
+
     // ── 诊断与日志配置 ──
 
     /// <summary>是否启用诊断日志（默认关闭）</summary>
@@ -127,6 +135,7 @@ public sealed class AiProviderSettings
              + $"步进:+/-{MaxStepPercent}% 轮询:{PollingIntervalSeconds}s 传感器:{SensorProvider} "
              + $"绑定:{bindingStr} "
              + $"变化阈值:{ChangeThreshold}°C 迟滞:{HysteresisPercent}% 历史:{SnapshotHistorySize} "
+             + $"传感器清洗:{(EnableSensorSanitize ? "开" : "关")} "
              + $"诊断:{(EnableDiagnostics ? "开" : "关")} 日志级别:{LogLevel} 写文件:{(LogToFile ? "是" : "否")}";
     }
 }

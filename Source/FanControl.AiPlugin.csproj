@@ -27,7 +27,7 @@
   <!-- 引用真实 FanControl.Plugins.dll（编译时引用，运行时由 FanControl 宿主提供） -->
   <ItemGroup>
     <Reference Include="FanControl.Plugins">
-      <HintPath>..\FanControl.Plugins.dll</HintPath>
+      <HintPath>..\..\FanControl.Plugins.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>
@@ -49,10 +49,12 @@
     </None>
   </ItemGroup>
 
-  <!-- 排除 Demo 目录，Demo 是独立项目 -->
+  <!-- 排除 Demo 和 ConfigTool 目录，二者都是独立项目 -->
   <ItemGroup>
     <Compile Remove="Demo\**" />
     <None Remove="Demo\**" />
+    <Compile Remove="ConfigTool\**" />
+    <None Remove="ConfigTool\**" />
   </ItemGroup>
 
 </Project>

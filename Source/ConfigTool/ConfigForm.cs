@@ -28,24 +28,27 @@ public sealed class ConfigForm : Form
     private readonly TextBox _txtMbSensor = new() { Width = 300 };
     private readonly ComboBox _cboMatchMode = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
 
+    // --- 稳定性增强字段 ---
+    private readonly CheckBox _chkSensorSanitize = new() { Text = "启用传感器数据清洗" };
+
     // --- 诊断字段 ---
-    private readonly CheckBox _chkDiagnostics = new() { Text = "\u542f\u7528\u8bca\u65ad\u65e5\u5fd7" };
+    private readonly CheckBox _chkDiagnostics = new() { Text = "启用诊断日志" };
     private readonly ComboBox _cboLogLevel = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
-    private readonly CheckBox _chkLogToFile = new() { Text = "\u5199\u5165\u65e5\u5fd7\u6587\u4ef6" };
+    private readonly CheckBox _chkLogToFile = new() { Text = "写入日志文件" };
 
     // --- 按钮和状态 ---
-    private readonly Button _btnTestConnection = new() { Text = "\u6d4b\u8bd5\u8fde\u63a5", Width = 100, Height = 32 };
-    private readonly Button _btnSave = new() { Text = "\u4fdd\u5b58\u914d\u7f6e", Width = 100, Height = 32 };
-    private readonly Button _btnReload = new() { Text = "\u91cd\u65b0\u52a0\u8f7d", Width = 100, Height = 32 };
-    private readonly Button _btnOpenFile = new() { Text = "\u6253\u5f00\u914d\u7f6e\u6587\u4ef6", Width = 110, Height = 32 };
+    private readonly Button _btnTestConnection = new() { Text = "测试连接", Width = 100, Height = 32 };
+    private readonly Button _btnSave = new() { Text = "保存配置", Width = 100, Height = 32 };
+    private readonly Button _btnReload = new() { Text = "重新加载", Width = 100, Height = 32 };
+    private readonly Button _btnOpenFile = new() { Text = "打开配置文件", Width = 110, Height = 32 };
     private readonly Label _lblStatus = new() { AutoSize = true, ForeColor = Color.DarkGray };
-    private readonly CheckBox _chkShowKey = new() { Text = "\u663e\u793a", Width = 55, Height = 20 };
+    private readonly CheckBox _chkShowKey = new() { Text = "显示", Width = 55, Height = 20 };
 
     private string _configPath = string.Empty;
 
     public ConfigForm()
     {
-        Text = "FanControl AI \u63d2\u4ef6 \u2014 \u914d\u7f6e\u5de5\u5177";
+        Text = "FanControl AI 插件 — 配置工具";
         Size = new Size(560, 760);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -62,7 +65,7 @@ public sealed class ConfigForm : Form
         var tabControl = new TabControl { Dock = DockStyle.Fill };
 
         // ===== Tab 1: AI 服务 =====
-        var tabAi = new TabPage("AI \u670d\u52a1") { Padding = new Padding(10) };
+        var tabAi = new TabPage("AI 服务") { Padding = new Padding(10) };
         var panelAi = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -73,20 +76,20 @@ public sealed class ConfigForm : Form
         panelAi.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100));
         panelAi.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
-        AddRow(panelAi, "\u7aef\u70b9 URL:", _txtEndpointUrl);
+        AddRow(panelAi, "端点 URL:", _txtEndpointUrl);
         // API Key 行：TextBox + 显示复选框
         var apiKeyPanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false, FlowDirection = FlowDirection.LeftToRight };
         apiKeyPanel.Controls.Add(_txtApiKey);
         apiKeyPanel.Controls.Add(_chkShowKey);
         AddRow(panelAi, "API Key:", apiKeyPanel);
-        AddRow(panelAi, "\u6a21\u578b:", _txtModel);
-        AddRow(panelAi, "\u6e29\u5ea6:", _nudTemperature);
-        AddRow(panelAi, "\u8d85\u65f6(\u79d2):", _nudTimeout);
-        AddRow(panelAi, "\u8f6e\u8be2\u95f4\u9694(\u79d2):", _nudPollingInterval);
-        AddRow(panelAi, "\u6700\u5927\u6b65\u8fdb(%):", _nudMaxStep);
-        AddRow(panelAi, "\u53d8\u5316\u9608\u503c(\u00b0C):", _nudChangeThreshold);
-        AddRow(panelAi, "\u8fdf\u6ede\u6b7b\u533a(%):", _nudHysteresisPercent);
-        AddRow(panelAi, "\u5feb\u7167\u5386\u53f2\u6570:", _nudSnapshotHistory);
+        AddRow(panelAi, "模型:", _txtModel);
+        AddRow(panelAi, "温度:", _nudTemperature);
+        AddRow(panelAi, "超时(秒):", _nudTimeout);
+        AddRow(panelAi, "轮询间隔(秒):", _nudPollingInterval);
+        AddRow(panelAi, "最大步进(%):", _nudMaxStep);
+        AddRow(panelAi, "变化阈值(°C):", _nudChangeThreshold);
+        AddRow(panelAi, "迟滞死区(%):", _nudHysteresisPercent);
+        AddRow(panelAi, "快照历史数:", _nudSnapshotHistory);
 
         // 测试连接按钮
         var testPanel = new FlowLayoutPanel { AutoSize = true, WrapContents = false };
@@ -97,7 +100,7 @@ public sealed class ConfigForm : Form
         tabAi.Controls.Add(panelAi);
 
         // ===== Tab 2: 传感器 =====
-        var tabSensor = new TabPage("\u4f20\u611f\u5668") { Padding = new Padding(10) };
+        var tabSensor = new TabPage("传感器") { Padding = new Padding(10) };
         var panelSensor = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -109,18 +112,19 @@ public sealed class ConfigForm : Form
         panelSensor.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _cboSensorProvider.Items.AddRange(new object[] { "mock", "lhm" });
-        AddRow(panelSensor, "\u4f20\u611f\u5668\u63d0\u4f9b\u8005:", _cboSensorProvider);
-        AddRow(panelSensor, "CPU \u4f20\u611f\u5668\u540d:", _txtCpuSensor);
-        AddRow(panelSensor, "GPU \u4f20\u611f\u5668\u540d:", _txtGpuSensor);
-        AddRow(panelSensor, "\u4e3b\u677f\u4f20\u611f\u5668\u540d:", _txtMbSensor);
+        AddRow(panelSensor, "传感器提供者:", _cboSensorProvider);
+        AddRow(panelSensor, "CPU 传感器名:", _txtCpuSensor);
+        AddRow(panelSensor, "GPU 传感器名:", _txtGpuSensor);
+        AddRow(panelSensor, "主板传感器名:", _txtMbSensor);
 
         _cboMatchMode.Items.AddRange(new object[] { "contains", "exact" });
-        AddRow(panelSensor, "\u5339\u914d\u6a21\u5f0f:", _cboMatchMode);
+        AddRow(panelSensor, "匹配模式:", _cboMatchMode);
+        AddRow(panelSensor, "", _chkSensorSanitize);
 
         // 传感器说明
         var lblSensorHelp = new Label
         {
-            Text = "\u63d0\u793a\uff1a\u4f20\u611f\u5668\u540d\u79f0\u7559\u7a7a\u8868\u793a\u81ea\u52a8\u5339\u914d\u3002\u542f\u7528 debug \u65e5\u5fd7\u53ef\u67e5\u770b\u6240\u6709\u53ef\u7528\u4f20\u611f\u5668\u540d\u3002\n\u4ec5\u5728 sensorProvider=lhm \u4e14\u4ee5 -p:USE_LHM=true \u7f16\u8bd1\u65f6\u751f\u6548\u3002",
+            Text = "提示：传感器名称留空表示自动匹配。启用 debug 日志可查看所有可用传感器名。\n仅在 sensorProvider=lhm 且以 -p:USE_LHM=true 编译时生效。",
             AutoSize = true,
             ForeColor = Color.Gray,
             Padding = new Padding(0, 10, 0, 0)
@@ -131,7 +135,7 @@ public sealed class ConfigForm : Form
         tabSensor.Controls.Add(panelSensor);
 
         // ===== Tab 3: 诊断 =====
-        var tabDiag = new TabPage("\u8bca\u65ad") { Padding = new Padding(10) };
+        var tabDiag = new TabPage("诊断") { Padding = new Padding(10) };
         var panelDiag = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
@@ -145,7 +149,7 @@ public sealed class ConfigForm : Form
         AddRow(panelDiag, "", _chkDiagnostics);
 
         _cboLogLevel.Items.AddRange(new object[] { "debug", "info", "warning", "error" });
-        AddRow(panelDiag, "\u65e5\u5fd7\u7ea7\u522b:", _cboLogLevel);
+        AddRow(panelDiag, "日志级别:", _cboLogLevel);
         AddRow(panelDiag, "", _chkLogToFile);
 
         tabDiag.Controls.Add(panelDiag);
@@ -226,15 +230,17 @@ public sealed class ConfigForm : Form
             _txtMbSensor.Text = settings.MotherboardSensorName;
             _cboMatchMode.SelectedItem = settings.SensorMatchMode;
 
+            _chkSensorSanitize.Checked = settings.EnableSensorSanitize;
+
             _chkDiagnostics.Checked = settings.EnableDiagnostics;
             _cboLogLevel.SelectedItem = settings.LogLevel;
             _chkLogToFile.Checked = settings.LogToFile;
 
-            SetStatus($"\u914d\u7f6e\u5df2\u52a0\u8f7d: {_configPath}", Color.DarkGreen);
+            SetStatus($"配置已加载: {_configPath}", Color.DarkGreen);
         }
         catch (Exception ex)
         {
-            SetStatus($"\u52a0\u8f7d\u5931\u8d25: {ex.Message}", Color.Red);
+            SetStatus($"加载失败: {ex.Message}", Color.Red);
         }
     }
 
@@ -259,24 +265,25 @@ public sealed class ConfigForm : Form
                 GpuSensorName = _txtGpuSensor.Text.Trim(),
                 MotherboardSensorName = _txtMbSensor.Text.Trim(),
                 SensorMatchMode = _cboMatchMode.SelectedItem?.ToString() ?? "contains",
+                EnableSensorSanitize = _chkSensorSanitize.Checked,
                 EnableDiagnostics = _chkDiagnostics.Checked,
                 LogLevel = _cboLogLevel.SelectedItem?.ToString() ?? "info",
                 LogToFile = _chkLogToFile.Checked
             };
 
             SettingsStore.Save(settings, _configPath);
-            SetStatus($"\u914d\u7f6e\u5df2\u4fdd\u5b58: {_configPath}", Color.DarkGreen);
+            SetStatus($"配置已保存: {_configPath}", Color.DarkGreen);
         }
         catch (Exception ex)
         {
-            SetStatus($"\u4fdd\u5b58\u5931\u8d25: {ex.Message}", Color.Red);
+            SetStatus($"保存失败: {ex.Message}", Color.Red);
         }
     }
 
     private async Task TestConnectionAsync()
     {
         _btnTestConnection.Enabled = false;
-        SetStatus("\u6b63\u5728\u6d4b\u8bd5\u8fde\u63a5...", Color.DarkBlue);
+        SetStatus("正在测试连接...", Color.DarkBlue);
 
         try
         {
@@ -291,7 +298,7 @@ public sealed class ConfigForm : Form
 
             if (!settings.IsValid())
             {
-                SetStatus("\u914d\u7f6e\u65e0\u6548: \u8bf7\u68c0\u67e5\u7aef\u70b9 URL\u3001API Key \u548c\u6a21\u578b\u540d\u662f\u5426\u5df2\u586b\u5199", Color.Red);
+                SetStatus("配置无效: 请检查端点 URL、API Key 和模型名是否已填写", Color.Red);
                 return;
             }
 
@@ -300,16 +307,16 @@ public sealed class ConfigForm : Form
 
             if (success)
             {
-                SetStatus($"\u8fde\u63a5\u6210\u529f: {TruncateMessage(message, 60)}", Color.DarkGreen);
+                SetStatus($"连接成功: {TruncateMessage(message, 60)}", Color.DarkGreen);
             }
             else
             {
-                SetStatus($"\u8fde\u63a5\u5931\u8d25: {TruncateMessage(message, 80)}", Color.Red);
+                SetStatus($"连接失败: {TruncateMessage(message, 80)}", Color.Red);
             }
         }
         catch (Exception ex)
         {
-            SetStatus($"\u6d4b\u8bd5\u5f02\u5e38: {TruncateMessage(ex.Message, 80)}", Color.Red);
+            SetStatus($"测试异常: {TruncateMessage(ex.Message, 80)}", Color.Red);
         }
         finally
         {
@@ -321,7 +328,7 @@ public sealed class ConfigForm : Form
     {
         if (string.IsNullOrEmpty(_configPath) || !File.Exists(_configPath))
         {
-            SetStatus("\u914d\u7f6e\u6587\u4ef6\u4e0d\u5b58\u5728", Color.Red);
+            SetStatus("配置文件不存在", Color.Red);
             return;
         }
 
@@ -335,7 +342,7 @@ public sealed class ConfigForm : Form
         }
         catch (Exception ex)
         {
-            SetStatus($"\u6253\u5f00\u5931\u8d25: {ex.Message}", Color.Red);
+            SetStatus($"打开失败: {ex.Message}", Color.Red);
         }
     }
 

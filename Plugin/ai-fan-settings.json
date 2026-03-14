@@ -17,6 +17,8 @@
   "hysteresisPercent": 3.0,
   "snapshotHistorySize": 5,
 
+  "enableSensorSanitize": true,
+
   "enableDiagnostics": false,
   "logLevel": "info",
   "logToFile": false
