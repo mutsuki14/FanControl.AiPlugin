@@ -3,7 +3,7 @@ namespace FanControl.AiPlugin.Config;
 /// <summary>
 /// 单个传感器的绑定结果，用于诊断日志。
 /// </summary>
-public sealed class SensorBindingResult
+public sealed record SensorBindingResult
 {
     /// <summary>传感器角色（如 "CPU 温度"、"GPU 温度"）</summary>
     public string Role { get; init; } = string.Empty;
